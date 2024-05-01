@@ -32,9 +32,8 @@ import GHC.IO (unsafeDupablePerformIO, unsafePerformIO)
 defaultCacheWidth :: Int
 defaultCacheWidth = 1024
 
-data CacheState t = CacheState
-   { fresh :: {-# UNPACK #-} !Id
-   , content :: !(HashMap (Description t) t)
+newtype CacheState t = CacheState
+   { content :: HashMap (Description t) t
    }
 
 newtype Cache t = Cache { getCache :: Array Int (IORef (CacheState t)) }
@@ -48,7 +47,7 @@ cacheSize (Cache t) = foldrM
 
 mkCache :: Interned t => Cache t
 mkCache   = result where
-  element = CacheState (seedIdentity result) HashMap.empty
+  element = CacheState HashMap.empty
   w       = cacheWidth result
   result  = Cache
           $ unsafePerformIO
@@ -85,12 +84,12 @@ intern !bt = unsafeDupablePerformIO $ modifyAdvice $ atomicModifyIORef' slot go
   !hdt = hash dt
   !wid = cacheWidth dt
   r = hdt `mod` wid
-  go (CacheState i m) = case HashMap.lookup dt m of
-    Nothing -> let t = identify (wid * i + r) bt in (CacheState (i + 1) (HashMap.insert dt t m), t)
-    Just t -> (CacheState i m, t)
+  go (CacheState m) = case HashMap.lookup dt m of
+    Nothing -> let t = identify hdt bt in (CacheState(HashMap.insert dt t m), t)
+    Just t -> (CacheState m, t)
 
 -- given a description, go hunting for an entry in the cache
 recover :: Interned t => Description t -> IO (Maybe t)
 recover !dt = do
-  CacheState _ m <- readIORef $ getCache cache ! (hash dt `mod` cacheWidth dt)
+  CacheState m <- readIORef $ getCache cache ! (hash dt `mod` cacheWidth dt)
   return $ HashMap.lookup dt m
