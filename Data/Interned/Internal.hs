@@ -78,7 +78,7 @@ class Interned t => Uninternable t where
   unintern :: t -> Uninterned t
 
 intern :: Interned t => Uninterned t -> t
-intern !bt = unsafeDupablePerformIO $ modifyAdvice $ atomicModifyIORef slot go
+intern !bt = unsafeDupablePerformIO $ modifyAdvice $ atomicModifyIORef' slot go
   where
   slot = getCache cache ! r
   !dt = describe bt
